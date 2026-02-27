@@ -3,6 +3,7 @@ package com.example.OrderMicroService.OrderService;
 import com.example.OrderMicroService.OrderEntity.OrderEntity;
 import com.example.OrderMicroService.OrderEntity.OrderEvent;
 import com.example.OrderMicroService.OrderEntity.OrderStatus;
+import com.example.OrderMicroService.OrderEntity.orderEventEntity;
 import com.example.OrderMicroService.OrderRepoPLSQL.OrderPLSql;
 import com.example.OrderMicroService.orderEventRepoMongo.OrderEventRepoMongo;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -10,6 +11,7 @@ import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.stereotype.Service;
 
 import java.time.Instant;
+import java.util.Optional;
 import java.util.UUID;
 
 @Service
@@ -21,6 +23,12 @@ public class OrderService {
     @Autowired
     private OrderEventRepoMongo orderEventRepoMongo;
 
+    private OrderStatus getCurrentStatus(Integer orderId) {
+        return orderEventRepoMongo
+                .findTopByOrderIdOrderByTimestampDesc(orderId)
+                .map(event -> OrderStatus.valueOf((String) event.getStatus()))
+                .orElseThrow(() -> new RuntimeException("Order has no events"));
+    }
 
     public void saveOrders(OrderEntity orders) {
         OrderEntity saveOrders=orderPLSql.save(orders);
@@ -34,6 +42,21 @@ public class OrderService {
 //        OrderEntity updated = orderPLSql.save(order);
 
         publishEvent(order, String.valueOf(OrderStatus.SHIPPED));
+    }
+
+    public void delivered(Integer orderId) {
+        OrderStatus current = getCurrentStatus(orderId);
+        if (current != OrderStatus.SHIPPED) {
+            throw new RuntimeException("Only Shipped orders can be Delivered");
+        }
+        OrderEntity order = orderPLSql.findById(orderId)
+                .orElseThrow(() -> new RuntimeException("Order not found"));
+//            System.out.println(orderEventRepoMongo.find)
+//            OrderStatus currentStatus=order
+//        order.setStatus(OrderStatus.CANCELLED);
+//        OrderEntity updated = orderPLSql.save(order);
+
+        publishEvent(order, String.valueOf(OrderStatus.DELIVERED));
     }
 
     public void cancelOrder(Integer orderId) {

@@ -33,6 +33,16 @@ public class OrderController {
         }
 
     }
+    @PostMapping("/orders/{id}/deliv")
+    public ResponseEntity<String> delivered(@PathVariable Integer id) {
+        try {
+            orderService.delivered(id); ;
+            return ResponseEntity.ok("Messaged saved");
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(e.getMessage());
+        }
+
+    }
     @PostMapping("/orders/{id}/cancel")
     public ResponseEntity<String> cancelOrder(@PathVariable Integer id) {
         try {
